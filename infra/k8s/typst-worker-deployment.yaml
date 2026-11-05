@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: render-worker-typst
+  namespace: docengine
+  labels:
+    app: render-worker-typst
+    tier: renderer
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: render-worker-typst
+  template:
+    metadata:
+      labels:
+        app: render-worker-typst
+        tier: renderer
+    spec:
+      serviceAccountName: docengine-worker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+        - name: render-worker-typst
+          image: yourorg/render-worker-typst:latest
+          imagePullPolicy: Always
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: docengine-secrets
+                  key: redis-url
+            - name: CONSUMER_GROUP
+              value: typst-workers
+            - name: CONSUMER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name  # use pod name for unique consumer ID
+            - name: WORKER_CONCURRENCY
+              value: "4"
+            - name: ARTIFACT_BUCKET
+              value: docengine-artifacts
+            - name: AWS_REGION
+              value: ap-south-1
+            - name: TEMPLATE_DIR
+              value: /templates/typst
+            - name: RUST_LOG
+              value: info
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "400Mi"   # hard ceiling above 250 MB RSS restart threshold
+              cpu: "1000m"
+          volumeMounts:
+            - name: typst-templates
+              mountPath: /templates/typst
+              readOnly: true
+          livenessProbe:
+            exec:
+              command: ["pgrep", "-x", "render-worker-typst"]
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: ["pgrep", "-x", "render-worker-typst"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: typst-templates
+          configMap:
+            name: typst-templates
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: render-worker-typst-pdb
+  namespace: docengine
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: render-worker-typst
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: render-worker-typst-hpa
+  namespace: docengine
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: render-worker-typst
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: redis_stream_pending_count
+          selector:
+            matchLabels:
+              stream: render:jobs
+              group: typst-workers
+        target:
+          type: AverageValue
+          averageValue: "100"   # scale up if > 100 pending messages per replica

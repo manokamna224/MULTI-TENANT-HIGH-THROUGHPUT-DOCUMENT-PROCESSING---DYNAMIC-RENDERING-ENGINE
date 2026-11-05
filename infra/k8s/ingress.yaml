@@ -1,0 +1,53 @@
+# Ingress — exposes the API Gateway externally via an NGINX Ingress Controller.
+#
+# Annotations can be swapped for the AWS ALB Ingress Controller:
+#   kubernetes.io/ingress.class: alb
+#   alb.ingress.kubernetes.io/scheme: internet-facing
+#   alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
+#
+# Apply:  kubectl apply -f ingress.yaml -n docengine
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docengine-ingress
+  namespace: docengine
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size:       "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout:    "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout:    "60"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    # Rate limiting is handled inside the api-gateway service itself (Redis).
+    # This annotation provides a coarse OS-level shield against connection floods.
+    nginx.ingress.kubernetes.io/limit-connections: "200"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.yourorg.com
+      secretName: docengine-tls     # TLS cert managed by cert-manager
+  rules:
+    - host: api.yourorg.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 80
+---
+# cert-manager Certificate resource (requires cert-manager v1.x installed)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: docengine-tls
+  namespace: docengine
+spec:
+  secretName: docengine-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - api.yourorg.com

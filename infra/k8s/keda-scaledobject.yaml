@@ -1,0 +1,59 @@
+# KEDA ScaledObjects — auto-scale render workers based on Redis Stream lag.
+# Requires KEDA v2.14+ installed in the cluster.
+# https://keda.sh/docs/2.14/scalers/redis-streams/
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: typst-worker-scaler
+  namespace: docengine
+spec:
+  scaleTargetRef:
+    name: render-worker-typst
+  minReplicaCount: 2
+  maxReplicaCount: 20
+  pollingInterval:  15
+  cooldownPeriod:   60
+  triggers:
+    - type: redis-streams
+      metadata:
+        address:           redis.docengine.svc.cluster.local:6379
+        stream:            render:jobs
+        consumerGroup:     typst-workers
+        # Scale up when pending messages per replica exceed this threshold
+        pendingEntriesCount: "100"
+      authenticationRef:
+        name: redis-trigger-auth
+
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: chromium-worker-scaler
+  namespace: docengine
+spec:
+  scaleTargetRef:
+    name: render-worker-chromium
+  minReplicaCount: 1
+  maxReplicaCount: 8
+  pollingInterval:  15
+  cooldownPeriod:   120
+  triggers:
+    - type: redis-streams
+      metadata:
+        address:             redis.docengine.svc.cluster.local:6379
+        stream:              render:jobs
+        consumerGroup:       chromium-workers
+        pendingEntriesCount: "20"
+      authenticationRef:
+        name: redis-trigger-auth
+
+---
+# TriggerAuthentication for Redis (no password in dev; add secret ref for prod)
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-trigger-auth
+  namespace: docengine
+spec:
+  secretTargetRef: []  # No auth in dev; set password ref here for prod

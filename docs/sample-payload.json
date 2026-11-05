@@ -1,0 +1,57 @@
+{
+  "tenant_id":     "00000000-0000-0000-0000-000000000001",
+  "template_id":   "00000000-0000-0000-0000-000000000002",
+  "document_type": "measurement_book",
+  "payload": {
+    "document_meta": {
+      "title":            "Earthwork Excavation & Backfilling — Block A, Phase 2",
+      "contract_no":      "CT-2026/EW/001",
+      "contractor":       "ABC Construction Pvt. Ltd.",
+      "work_description": "Earthwork in ordinary soil not exceeding 1.5m depth including disposal",
+      "date":             "2026-11-04"
+    },
+    "line_items": [
+      {
+        "index": 0,
+        "description": "Earthwork excavation in ordinary soil",
+        "unit":        "cum",
+        "quantity":    "120.50",
+        "rate":        "85.00",
+        "amount":      "10242.50"
+      },
+      {
+        "index": 1,
+        "description": "Disposal of excavated earth beyond 50m",
+        "unit":        "cum",
+        "quantity":    "120.50",
+        "rate":        "12.00",
+        "amount":      "1446.00"
+      },
+      {
+        "index": 2,
+        "description": "Backfilling with excavated earth in layers",
+        "unit":        "cum",
+        "quantity":    "50.00",
+        "rate":        "45.50",
+        "amount":      "2275.00"
+      },
+      {
+        "index": 3,
+        "description": "Compaction by power roller (8-10 tonne)",
+        "unit":        "sqm",
+        "quantity":    "200.00",
+        "rate":        "18.75",
+        "amount":      "3750.00"
+      }
+    ],
+    "summary": {
+      "subtotal":            "17713.50",
+      "tax_rate_pct":        18,
+      "tax_amount":          "3188.43",
+      "grand_total":         "20901.93",
+      "contract_value":      "500000.00",
+      "previous_cumulative": "100000.00",
+      "current_claim":       "20901.93"
+    }
+  }
+}

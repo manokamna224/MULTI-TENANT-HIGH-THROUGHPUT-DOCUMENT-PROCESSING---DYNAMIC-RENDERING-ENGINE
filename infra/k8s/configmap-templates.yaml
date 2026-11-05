@@ -1,0 +1,45 @@
+# Template ConfigMaps — mount into render worker pods at /templates/
+#
+# In production, replace with a versioned OCI artifact or a git-synced volume.
+# ConfigMaps have a 1 MiB data limit; for large template sets use a PVC backed
+# by an object store (e.g., EFS, GCS Filestore) instead.
+#
+# Apply: kubectl apply -f configmap-templates.yaml -n docengine
+# Update: kubectl create configmap typst-templates --from-file=../../templates/typst/ \
+#           --dry-run=client -o yaml | kubectl apply -f - -n docengine
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: typst-templates
+  namespace: docengine
+  labels:
+    app.kubernetes.io/part-of: docengine
+    component: templates
+binaryData: {}
+# Populate with:
+#   kubectl create configmap typst-templates \
+#     --from-file=measurement_book.typ=../../templates/typst/measurement_book.typ \
+#     --from-file=schedule_of_rates.typ=../../templates/typst/schedule_of_rates.typ \
+#     --from-file=cumulative_billing.typ=../../templates/typst/cumulative_billing.typ \
+#     --dry-run=client -o yaml | kubectl apply -n docengine -f -
+data:
+  _placeholder: "replace-with-kubectl-from-file"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: html-templates
+  namespace: docengine
+  labels:
+    app.kubernetes.io/part-of: docengine
+    component: templates
+data:
+  _placeholder: "replace-with-kubectl-from-file"
+# Populate with:
+#   kubectl create configmap html-templates \
+#     --from-file=measurement_book.html=../../templates/html/measurement_book.html \
+#     --from-file=schedule_of_rates.html=../../templates/html/schedule_of_rates.html \
+#     --from-file=cumulative_billing.html=../../templates/html/cumulative_billing.html \
+#     --dry-run=client -o yaml | kubectl apply -n docengine -f -

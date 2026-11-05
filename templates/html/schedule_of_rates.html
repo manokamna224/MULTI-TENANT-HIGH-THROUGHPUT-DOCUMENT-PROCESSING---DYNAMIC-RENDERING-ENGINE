@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{document_meta.title}}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', serif; font-size: 9pt; color: #000; line-height: 1.4; }
+    @page { size: A4; margin: 20mm 15mm 25mm 20mm; }
+
+    .title      { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 2mm; }
+    .subtitle   { text-align: center; font-size: 10pt; margin-bottom: 6mm; }
+    .section-hd { font-weight: bold; font-size: 10pt; margin: 6mm 0 2mm; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    th, td { border: 0.5pt solid #555; padding: 1.5mm 2mm; vertical-align: top; }
+    thead tr        { background: #e8e8e8; }
+    thead           { display: table-header-group; }
+    tr              { page-break-inside: avoid; }
+    tbody tr:nth-child(odd)  { background: #fafafa; }
+    tbody tr:nth-child(even) { background: #fff; }
+    .num { text-align: right; }
+  </style>
+</head>
+<body>
+
+<div class="title">SCHEDULE OF RATES</div>
+<div class="subtitle">{{document_meta.title}} &mdash; FY {{document_meta.financial_year}}</div>
+
+{{#each sections}}
+<div class="section-hd">{{this.name}}</div>
+<table>
+  <thead>
+    <tr>
+      <th style="width:4em">Code</th>
+      <th>Description of Item</th>
+      <th style="width:4em">Unit</th>
+      <th style="width:8em" class="num">Rate (₹)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each this.items}}
+    <tr>
+      <td>{{this.code}}</td>
+      <td>{{this.description}}</td>
+      <td>{{this.unit}}</td>
+      <td class="num">{{this.rate}}</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+{{/each}}
+
+</body>
+</html>

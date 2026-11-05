@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-signing
+  namespace: docengine
+  labels:
+    app: crypto-signing
+    tier: post-processing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: crypto-signing
+  template:
+    metadata:
+      labels:
+        app: crypto-signing
+    spec:
+      serviceAccountName: docengine-worker
+      volumes:
+        - name: signing-certs
+          secret:
+            secretName: docengine-signing-certs
+            defaultMode: 0400
+      containers:
+        - name: crypto-signing
+          image: yourorg/crypto-signing:latest
+          imagePullPolicy: Always
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: docengine-secrets
+                  key: redis-url
+            - name: ARTIFACT_BUCKET
+              value: docengine-artifacts
+            - name: AWS_REGION
+              value: ap-south-1
+            - name: CONSUMER_GROUP
+              value: signing-workers
+            - name: CONSUMER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # Phase 3: switch SIGNING_KEY_SOURCE to "kms"
+            - name: SIGNING_KEY_SOURCE
+              value: pkcs12
+            - name: SIGNING_P12_PATH
+              value: /certs/signing.p12
+            - name: SIGNING_P12_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: docengine-signing-certs
+                  key: p12-passphrase
+            - name: RUST_LOG
+              value: info
+          volumeMounts:
+            - name: signing-certs
+              mountPath: /certs
+              readOnly: true
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: crypto-signing
+  namespace: docengine
+spec:
+  selector:
+    app: crypto-signing
+  clusterIP: None   # headless — workers need no load-balanced VIP

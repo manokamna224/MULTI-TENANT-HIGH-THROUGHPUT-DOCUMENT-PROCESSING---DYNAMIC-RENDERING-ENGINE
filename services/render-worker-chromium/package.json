@@ -1,0 +1,32 @@
+{
+  "name": "render-worker-chromium",
+  "version": "0.1.0",
+  "description": "Headless Chromium render worker with strict lifecycle management",
+  "main": "dist/index.js",
+  "scripts": {
+    "build":     "tsc",
+    "start":     "node dist/index.js",
+    "dev":       "ts-node src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test":      "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "puppeteer-core":    "22.15.0",
+    "@sparticuz/chromium": "130.0.0",
+    "ioredis":           "5.4.1",
+    "aws-sdk":           "2.1691.0",
+    "pg":                "8.13.0",
+    "winston":           "3.14.2",
+    "handlebars":        "4.7.8",
+    "p-limit":           "6.1.0"
+  },
+  "devDependencies": {
+    "typescript":                   "5.6.3",
+    "@types/node":                  "22.7.5",
+    "@types/pg":                    "8.11.10",
+    "ts-node":                      "10.9.2",
+    "vitest":                       "2.1.4",
+    "@vitest/coverage-v8":          "2.1.4"
+  }
+}

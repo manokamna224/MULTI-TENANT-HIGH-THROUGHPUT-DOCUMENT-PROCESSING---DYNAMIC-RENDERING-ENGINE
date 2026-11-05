@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: render-worker-chromium
+  namespace: docengine
+  labels:
+    app: render-worker-chromium
+    tier: renderer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: render-worker-chromium
+  template:
+    metadata:
+      labels:
+        app: render-worker-chromium
+    spec:
+      serviceAccountName: docengine-worker
+      # Chromium requires /dev/shm to be at least 256 MB
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+        - name: html-templates
+          configMap:
+            name: html-templates
+      containers:
+        - name: render-worker-chromium
+          image: yourorg/render-worker-chromium:latest
+          imagePullPolicy: Always
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: docengine-secrets
+                  key: redis-url
+            - name: CONSUMER_GROUP
+              value: chromium-workers
+            - name: CONSUMER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: WORKER_CONCURRENCY
+              value: "2"
+            - name: MAX_JOBS_PER_WORKER
+              value: "50"
+            - name: MAX_RSS_MB
+              value: "250"
+            - name: ARTIFACT_BUCKET
+              value: docengine-artifacts
+            - name: AWS_REGION
+              value: ap-south-1
+            - name: TEMPLATE_DIR
+              value: /templates/html
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "2000m"
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+            - name: html-templates
+              mountPath: /templates/html
+              readOnly: true
+          # Chromium needs these capabilities to run without --no-sandbox
+          securityContext:
+            capabilities:
+              add: ["SYS_ADMIN"]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: render-worker-chromium-pdb
+  namespace: docengine
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: render-worker-chromium
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: render-worker-chromium-hpa
+  namespace: docengine
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: render-worker-chromium
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: External
+      external:
+        metric:
+          name: redis_stream_pending_count
+          selector:
+            matchLabels:
+              stream: render:jobs
+              group: chromium-workers
+        target:
+          type: AverageValue
+          averageValue: "20"

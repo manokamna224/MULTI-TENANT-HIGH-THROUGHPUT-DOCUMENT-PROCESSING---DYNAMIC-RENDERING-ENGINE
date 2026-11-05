@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: artifact-storage
+  namespace: docengine
+  labels:
+    app: artifact-storage
+    tier: notification
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: artifact-storage
+  template:
+    metadata:
+      labels:
+        app: artifact-storage
+    spec:
+      serviceAccountName: docengine-worker
+      containers:
+        - name: artifact-storage
+          image: yourorg/artifact-storage:latest
+          imagePullPolicy: Always
+          env:
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: docengine-secrets
+                  key: redis-url
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: docengine-secrets
+                  key: database-url
+            - name: ARTIFACT_BUCKET
+              value: docengine-artifacts
+            - name: AWS_REGION
+              value: ap-south-1
+            - name: CONSUMER_GROUP
+              value: notification-workers
+            - name: CONSUMER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PRESIGN_TTL_SEC
+              value: "3600"
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            exec:
+              command: ["node", "-e", "process.exit(0)"]
+            initialDelaySeconds: 10
+            periodSeconds: 30

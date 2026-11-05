@@ -1,0 +1,43 @@
+# Binaries
+target/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+*.test
+*.out
+vendor/
+
+# Rust
+Cargo.lock
+**/target/
+
+# Node
+node_modules/
+*.log
+
+# Secrets & Certs
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+/bin/
+/out/
+*.pdf

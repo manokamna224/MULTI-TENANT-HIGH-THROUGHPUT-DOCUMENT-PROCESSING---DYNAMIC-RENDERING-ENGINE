@@ -1,0 +1,257 @@
+﻿
+========================================================
+ DocEngine - Full Test Run
+========================================================
+
+[1/6] go mod tidy (ingestion-engine)...
+OK
+
+[2/6] go build (ingestion-engine)...
+OK - compiles cleanly
+
+[3/6] go test ./internal/... (ingestion-engine)...
+  === RUN   TestVerifyMath_ValidPayload
+  === PAUSE TestVerifyMath_ValidPayload
+  === RUN   TestVerifyMath_LineItemAmountMismatch
+  === PAUSE TestVerifyMath_LineItemAmountMismatch
+  === RUN   TestVerifyMath_SubtotalMismatch
+  === PAUSE TestVerifyMath_SubtotalMismatch
+  === RUN   TestVerifyMath_CumulativeBillingExceeded
+  === PAUSE TestVerifyMath_CumulativeBillingExceeded
+  === RUN   TestVerifyMath_MultipleLineItemErrors
+  === PAUSE TestVerifyMath_MultipleLineItemErrors
+  === RUN   TestVerifyMath_ZeroLineItems
+  === PAUSE TestVerifyMath_ZeroLineItems
+  === RUN   TestVerifyMath_InvalidJSON
+  === PAUSE TestVerifyMath_InvalidJSON
+  === RUN   TestRequestID_GeneratesUUID
+  === PAUSE TestRequestID_GeneratesUUID
+  === RUN   TestRequestID_PreservesIncomingID
+  === PAUSE TestRequestID_PreservesIncomingID
+  === RUN   TestTenantFromHeader_SetsContext
+  === PAUSE TestTenantFromHeader_SetsContext
+  === RUN   TestTenantFromHeader_NoHeader_DoesNotSet
+  === PAUSE TestTenantFromHeader_NoHeader_DoesNotSet
+  === RUN   TestRecovery_CatchesPanic
+  === PAUSE TestRecovery_CatchesPanic
+  === CONT  TestVerifyMath_ValidPayload
+  === CONT  TestVerifyMath_InvalidJSON
+  --- PASS: TestVerifyMath_InvalidJSON (0.00s)
+  === CONT  TestRecovery_CatchesPanic
+  --- PASS: TestVerifyMath_ValidPayload (0.00s)
+  === CONT  TestVerifyMath_SubtotalMismatch
+  === CONT  TestVerifyMath_CumulativeBillingExceeded
+  === CONT  TestTenantFromHeader_NoHeader_DoesNotSet
+  2026-11-05T15:00:48.403+0530	ERROR	api/middleware.go:72	panic recovered	{"panic": "test panic", "request_id": "9a86111b-9168-41c1-bab3-ad11c9b4dc30"}
+  github.com/yourorg/docengine/ingestion/internal/api_test.TestRecovery_CatchesPanic.Recovery.func3.1
+  	D:/MULTI TENANT HIGH THROUGHPUT DOCUMENT PROCESSING & DYNAMIC RENDERING ENGINE/services/ingestion-engine/internal/api/middleware.go:72
+  runtime.gopanic
+  	C:/Users/manok/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.0.windows-amd64/src/runtime/panic.go:783
+  github.com/yourorg/docengine/ingestion/internal/api_test.TestRecovery_CatchesPanic.func1
+  	D:/MULTI TENANT HIGH THROUGHPUT DOCUMENT PROCESSING & DYNAMIC RENDERING ENGINE/services/ingestion-engine/internal/api/middleware_test.go:103
+  github.com/gin-gonic/gin.(*Context).Next
+  	C:/Users/manok/go/pkg/mod/github.com/gin-gonic/gin@v1.10.0/context.go:185
+  github.com/yourorg/docengine/ingestion/internal/api_test.TestRecovery_CatchesPanic.Recovery.func3
+  	D:/MULTI TENANT HIGH THROUGHPUT DOCUMENT PROCESSING & DYNAMIC RENDERING ENGINE/services/ingestion-engine/internal/api/middleware.go:83
+  github.com/gin-gonic/gin.(*Context).Next
+  	C:/Users/manok/go/pkg/mod/github.com/gin-gonic/gin@v1.10.0/context.go:185
+  github.com/yourorg/docengine/ingestion/internal/api_test.TestRecovery_CatchesPanic.RequestID.func2
+  	D:/MULTI TENANT HIGH THROUGHPUT DOCUMENT PROCESSING & DYNAMIC RENDERING ENGINE/services/ingestion-engine/internal/api/middleware.go:23
+  github.com/gin-gonic/gin.(*Context).Next
+  	C:/Users/manok/go/pkg/mod/github.com/gin-gonic/gin@v1.10.0/context.go:185
+  github.com/gin-gonic/gin.(*Engine).handleHTTPRequest
+  	C:/Users/manok/go/pkg/mod/github.com/gin-gonic/gin@v1.10.0/gin.go:633
+  github.com/gin-gonic/gin.(*Engine).ServeHTTP
+  	C:/Users/manok/go/pkg/mod/github.com/gin-gonic/gin@v1.10.0/gin.go:589
+  github.com/yourorg/docengine/ingestion/internal/api_test.TestRecovery_CatchesPanic
+  	D:/MULTI TENANT HIGH THROUGHPUT DOCUMENT PROCESSING & DYNAMIC RENDERING ENGINE/services/ingestion-engine/internal/api/middleware_test.go:109
+  testing.tRunner
+  	C:/Users/manok/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.0.windows-amd64/src/testing/testing.go:1934
+  --- PASS: TestVerifyMath_SubtotalMismatch (0.00s)
+  --- PASS: TestVerifyMath_CumulativeBillingExceeded (0.00s)
+  --- PASS: TestTenantFromHeader_NoHeader_DoesNotSet (0.00s)
+  --- PASS: TestRecovery_CatchesPanic (0.00s)
+  === CONT  TestVerifyMath_LineItemAmountMismatch
+  --- PASS: TestVerifyMath_LineItemAmountMismatch (0.00s)
+  === CONT  TestTenantFromHeader_SetsContext
+  --- PASS: TestTenantFromHeader_SetsContext (0.00s)
+  === CONT  TestRequestID_GeneratesUUID
+  --- PASS: TestRequestID_GeneratesUUID (0.00s)
+  === CONT  TestRequestID_PreservesIncomingID
+  --- PASS: TestRequestID_PreservesIncomingID (0.00s)
+  === CONT  TestVerifyMath_ZeroLineItems
+  --- PASS: TestVerifyMath_ZeroLineItems (0.00s)
+  === CONT  TestVerifyMath_MultipleLineItemErrors
+  --- PASS: TestVerifyMath_MultipleLineItemErrors (0.00s)
+  PASS
+  ok  	github.com/yourorg/docengine/ingestion/internal/api	2.603s
+  === RUN   TestVerifyLineItems_Valid
+  === PAUSE TestVerifyLineItems_Valid
+  === RUN   TestVerifyLineItems_SingleMismatch
+  === PAUSE TestVerifyLineItems_SingleMismatch
+  === RUN   TestVerifyLineItems_AllErrors
+  === PAUSE TestVerifyLineItems_AllErrors
+  === RUN   TestVerifyLineItems_Empty
+  === PAUSE TestVerifyLineItems_Empty
+  === RUN   TestVerifyLineItems_BankersRounding
+  === PAUSE TestVerifyLineItems_BankersRounding
+  === RUN   TestComputeSubtotal_SumsAmounts
+  === PAUSE TestComputeSubtotal_SumsAmounts
+  === RUN   TestComputeSubtotal_Empty
+  === PAUSE TestComputeSubtotal_Empty
+  === RUN   TestApplyTieredTax_GST18
+  === PAUSE TestApplyTieredTax_GST18
+  === RUN   TestApplyTieredTax_MultiTier_LowerBand
+  === PAUSE TestApplyTieredTax_MultiTier_LowerBand
+  === RUN   TestApplyTieredTax_MultiTier_UpperBand
+  === PAUSE TestApplyTieredTax_MultiTier_UpperBand
+  === RUN   TestApplyTieredTax_NoTiers_ZeroTax
+  === PAUSE TestApplyTieredTax_NoTiers_ZeroTax
+  === RUN   TestCumulativeBillingCheck_WithinLimit
+  === PAUSE TestCumulativeBillingCheck_WithinLimit
+  === RUN   TestCumulativeBillingCheck_ExactLimit
+  === PAUSE TestCumulativeBillingCheck_ExactLimit
+  === RUN   TestCumulativeBillingCheck_Overage
+  === PAUSE TestCumulativeBillingCheck_Overage
+  === RUN   TestCumulativeBillingCheck_ZeroPrevious
+  === PAUSE TestCumulativeBillingCheck_ZeroPrevious
+  === CONT  TestVerifyLineItems_Valid
+  --- PASS: TestVerifyLineItems_Valid (0.00s)
+  === CONT  TestCumulativeBillingCheck_ZeroPrevious
+  --- PASS: TestCumulativeBillingCheck_ZeroPrevious (0.00s)
+  === CONT  TestCumulativeBillingCheck_Overage
+  --- PASS: TestCumulativeBillingCheck_Overage (0.00s)
+  === CONT  TestCumulativeBillingCheck_ExactLimit
+  --- PASS: TestCumulativeBillingCheck_ExactLimit (0.00s)
+  === CONT  TestCumulativeBillingCheck_WithinLimit
+  --- PASS: TestCumulativeBillingCheck_WithinLimit (0.00s)
+  === CONT  TestApplyTieredTax_NoTiers_ZeroTax
+  --- PASS: TestApplyTieredTax_NoTiers_ZeroTax (0.00s)
+  === CONT  TestApplyTieredTax_MultiTier_UpperBand
+  --- PASS: TestApplyTieredTax_MultiTier_UpperBand (0.00s)
+  === CONT  TestApplyTieredTax_MultiTier_LowerBand
+  --- PASS: TestApplyTieredTax_MultiTier_LowerBand (0.00s)
+  === CONT  TestApplyTieredTax_GST18
+  --- PASS: TestApplyTieredTax_GST18 (0.00s)
+  === CONT  TestComputeSubtotal_Empty
+  --- PASS: TestComputeSubtotal_Empty (0.00s)
+  === CONT  TestComputeSubtotal_SumsAmounts
+  --- PASS: TestComputeSubtotal_SumsAmounts (0.00s)
+  === CONT  TestVerifyLineItems_BankersRounding
+  --- PASS: TestVerifyLineItems_BankersRounding (0.00s)
+  === CONT  TestVerifyLineItems_Empty
+  --- PASS: TestVerifyLineItems_Empty (0.00s)
+  === CONT  TestVerifyLineItems_AllErrors
+  --- PASS: TestVerifyLineItems_AllErrors (0.00s)
+  === CONT  TestVerifyLineItems_SingleMismatch
+  --- PASS: TestVerifyLineItems_SingleMismatch (0.00s)
+  PASS
+  ok  	github.com/yourorg/docengine/ingestion/internal/math	1.278s
+  === RUN   TestRenderJob_MarshalUnmarshal
+  --- PASS: TestRenderJob_MarshalUnmarshal (0.00s)
+  === RUN   TestNewRedisPublisher_InvalidURL
+  --- PASS: TestNewRedisPublisher_InvalidURL (0.00s)
+  === RUN   TestNewRedisPublisher_UnreachableHost
+  --- PASS: TestNewRedisPublisher_UnreachableHost (0.10s)
+  === RUN   TestRetrySweeper_NewRetrySweeper
+      publisher_test.go:76: requires live Postgres + Redis ÔÇö see tests/integration/
+  --- SKIP: TestRetrySweeper_NewRetrySweeper (0.00s)
+  === RUN   TestRetrySweeper_RunCancelsCleanly
+      publisher_test.go:82: requires live Postgres + Redis ÔÇö see tests/integration/
+  --- SKIP: TestRetrySweeper_RunCancelsCleanly (0.00s)
+  PASS
+  ok  	github.com/yourorg/docengine/ingestion/internal/queue	1.663s
+  === RUN   TestErrNotFound_IsError
+  --- PASS: TestErrNotFound_IsError (0.00s)
+  === RUN   TestJobRow_ZeroValue
+  --- PASS: TestJobRow_ZeroValue (0.00s)
+  === RUN   TestCreateJobParams_Fields
+  --- PASS: TestCreateJobParams_Fields (0.00s)
+  === RUN   TestNew_RequiresDatabase
+      repository_test.go:61: requires live Postgres ÔÇö covered by tests/integration/
+  --- SKIP: TestNew_RequiresDatabase (0.00s)
+  PASS
+  ok  	github.com/yourorg/docengine/ingestion/internal/repository	1.297s
+  === RUN   TestNew_LoadsSchemas
+  --- PASS: TestNew_LoadsSchemas (0.00s)
+  === RUN   TestValidate_MeasurementBook_Valid
+  --- PASS: TestValidate_MeasurementBook_Valid (0.00s)
+  === RUN   TestValidate_MeasurementBook_MissingRequiredField
+  --- PASS: TestValidate_MeasurementBook_MissingRequiredField (0.00s)
+  === RUN   TestValidate_MeasurementBook_InvalidDateFormat
+  --- PASS: TestValidate_MeasurementBook_InvalidDateFormat (0.00s)
+  === RUN   TestValidate_UnknownDocType_PassesThrough
+  --- PASS: TestValidate_UnknownDocType_PassesThrough (0.00s)
+  === RUN   TestValidate_InvalidJSON_ReturnsError
+  --- PASS: TestValidate_InvalidJSON_ReturnsError (0.00s)
+  === RUN   TestValidate_ScheduleOfRates_Valid
+  --- PASS: TestValidate_ScheduleOfRates_Valid (0.00s)
+  === RUN   TestValidate_AmountPattern_RejectsFloat
+  --- PASS: TestValidate_AmountPattern_RejectsFloat (0.00s)
+  PASS
+  ok  	github.com/yourorg/docengine/ingestion/internal/validation	1.115s
+PASS
+
+[4/6] cargo check (render-worker-typst)...
+    17 | |         .with(EnvFilter::from_default_env())
+       | |         -^^^^ method not found in `Registry`
+       | |_________|
+       |
+       |
+      ::: C:\Users\manok\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tracing-subscriber-0.3.23\src\layer\mod.rs:1502:8
+       |
+  1502 |       fn with<L>(self, layer: L) -> Layered<L, Self>
+       |          ---- the method is available for `Registry` here
+       |
+       = help: items from traits can only be used if the trait is in scope
+  help: trait `SubscriberExt` which provides `with` is implemented but not in scope; perhaps you want to import it
+       |
+     1 + use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
+       |
+  System.Management.Automation.RemoteException
+  Some errors have detailed explanations: E0599, E0614.
+  For more information about an error, try `rustc --explain E0599`.
+  warning: `render-worker-typst` (bin "render-worker-typst") generated 1 warning
+  error: could not compile `render-worker-typst` (bin "render-worker-typst") due to 12 previous errors; 1 warning emitted
+FAIL (exit 101)
+
+[5/6] cargo check (crypto-signing)...
+    OPENSSL_NO_VENDOR unset
+    cargo:rerun-if-env-changed=X86_64_PC_WINDOWS_MSVC_OPENSSL_CONFIG_DIR
+    X86_64_PC_WINDOWS_MSVC_OPENSSL_CONFIG_DIR unset
+    cargo:rerun-if-env-changed=OPENSSL_CONFIG_DIR
+    OPENSSL_CONFIG_DIR unset
+    running "perl" "./Configure" "--prefix=D:/MULTI TENANT HIGH THROUGHPUT DOCUMENT PROCESSING & DYNAMIC RENDERING ENGINE/services/crypto-signing/target/debug/build/openssl-sys-8531eee125bc935b/out/openssl-build/install" "--openssldir=SYS$MANAGER:[OPENSSL]" "no-shared" "no-module" "no-tests" "no-comp" "no-zlib" "no-zlib-dynamic" "--libdir=lib" "no-ssl3" "no-md2" "no-rc5" "no-weak-ssl-ciphers" "no-camellia" "no-idea" "no-seed" "no-capieng" "no-asm" "VC-WIN64A"
+    cargo:warning=configuring OpenSSL build: Command 'perl' not found. Is perl installed?
+    cargo:warning=openssl-src: failed to build OpenSSL from source
+  System.Management.Automation.RemoteException
+    --- stderr
+  System.Management.Automation.RemoteException
+  System.Management.Automation.RemoteException
+  System.Management.Automation.RemoteException
+    Error configuring OpenSSL build:
+        Command 'perl' not found. Is perl installed?
+        Command failed: "perl" "./Configure" "--prefix=D:/MULTI TENANT HIGH THROUGHPUT DOCUMENT PROCESSING & DYNAMIC RENDERING ENGINE/services/crypto-signing/target/debug/build/openssl-sys-8531eee125bc935b/out/openssl-build/install" "--openssldir=SYS$MANAGER:[OPENSSL]" "no-shared" "no-module" "no-tests" "no-comp" "no-zlib" "no-zlib-dynamic" "--libdir=lib" "no-ssl3" "no-md2" "no-rc5" "no-weak-ssl-ciphers" "no-camellia" "no-idea" "no-seed" "no-capieng" "no-asm" "VC-WIN64A"
+  System.Management.Automation.RemoteException
+  System.Management.Automation.RemoteException
+  System.Management.Automation.RemoteException
+  warning: build failed, waiting for other jobs to finish...
+FAIL (exit 101)
+
+[6/6] TypeScript typecheck (api-gateway, chromium-worker, artifact-storage)...
+  api-gateway - FAIL:
+    ../api-gateway/src/auth.test.ts(24,9): error TS2551: Property 'code' does not exist on type '{ _code: number; _body: any; }'. Did you mean '_code'?
+    ../api-gateway/src/auth.test.ts(25,9): error TS2339: Property 'send' does not exist on type '{ _code: number; _body: any; }'.
+  render-worker-chromium - FAIL:
+    ../render-worker-chromium/src/db.test.ts(33,3): error TS2304: Cannot find name 'afterEach'.
+  artifact-storage - OK
+
+[7] Docker Desktop status...
+  Client:
+   Version:    29.9.2
+   Context:    default
+  Docker not running - start Docker Desktop first
+
+========================================================
+ Done.
+========================================================

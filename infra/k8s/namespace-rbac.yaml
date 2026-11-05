@@ -1,0 +1,67 @@
+# Namespace, ServiceAccounts, and RBAC for DocEngine
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docengine
+  labels:
+    app.kubernetes.io/part-of: docengine
+
+---
+# API-facing pods (ingestion-engine, api-gateway)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: docengine-api
+  namespace: docengine
+
+---
+# Worker pods (render workers, crypto-signing, artifact-storage)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: docengine-worker
+  namespace: docengine
+
+---
+# Allow workers to read ConfigMaps (template mounts)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: docengine-worker-role
+  namespace: docengine
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs:     ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: docengine-worker-rolebinding
+  namespace: docengine
+subjects:
+  - kind: ServiceAccount
+    name: docengine-worker
+    namespace: docengine
+roleRef:
+  kind: Role
+  name: docengine-worker-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Secret holding all sensitive connection strings
+# Populate with: kubectl create secret generic docengine-secrets \
+#   --from-literal=redis-url="redis://..." \
+#   --from-literal=database-url="postgres://..." \
+#   --from-literal=jwt-secret="..." \
+#   -n docengine
+apiVersion: v1
+kind: Secret
+metadata:
+  name: docengine-secrets
+  namespace: docengine
+type: Opaque
+# data values must be base64-encoded; set via kubectl or external-secrets-operator
+data: {}

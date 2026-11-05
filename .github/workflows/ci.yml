@@ -1,0 +1,214 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/docengine
+
+jobs:
+  # ── Go: unit tests ──────────────────────────────────────────────────────────
+  test-go-unit:
+    name: Go unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ingestion-engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: services/ingestion-engine/go.sum
+
+      - name: Download modules
+        run: go mod tidy && go mod download
+
+      - name: Vet
+        run: go vet ./internal/...
+        run: go vet ./internal/...
+
+      - name: Unit tests
+        run: go test ./internal/... -v -count=1 -race -timeout 60s
+
+  # ── Go: integration tests (testcontainers) ──────────────────────────────────
+  test-go-integration:
+    name: Go integration tests
+    runs-on: ubuntu-latest
+    needs: test-go-unit
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache: true
+          cache-dependency-path: tests/integration/go.sum
+
+      - name: Download modules
+        working-directory: tests/integration
+        run: go mod tidy && go mod download
+
+      - name: Integration tests
+        working-directory: tests/integration
+        run: go test ./... -v -tags integration -timeout 180s
+
+  # ── Rust: unit tests (typst worker) ────────────────────────────────────────
+  test-rust-typst:
+    name: Rust tests (typst worker)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/render-worker-typst
+
+      - name: Clippy
+        working-directory: services/render-worker-typst
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Tests
+        working-directory: services/render-worker-typst
+        run: cargo test
+
+  # ── Rust: unit tests (crypto-signing) ──────────────────────────────────────
+  test-rust-signing:
+    name: Rust tests (crypto-signing)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/crypto-signing
+
+      - name: Clippy
+        working-directory: services/crypto-signing
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Tests
+        working-directory: services/crypto-signing
+        run: cargo test
+
+  # ── TypeScript: typecheck and unit test all TS services ────────────────────
+  test-ts:
+    name: TypeScript — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api-gateway, render-worker-chromium, artifact-storage]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+
+      - name: Install
+        working-directory: services/${{ matrix.service }}
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: services/${{ matrix.service }}
+        run: npm run typecheck
+
+      - name: Unit tests
+        working-directory: services/${{ matrix.service }}
+        run: npm test
+
+  # ── Docker build (all services) ─────────────────────────────────────────────
+  docker-build:
+    name: Docker build — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: [test-go-unit, test-rust-typst, test-rust-signing, test-ts]
+    strategy:
+      matrix:
+        service:
+          - ingestion-engine
+          - render-worker-typst
+          - render-worker-chromium
+          - crypto-signing
+          - api-gateway
+          - artifact-storage
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push on PR)
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: false
+          tags: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to:   type=gha,scope=${{ matrix.service }},mode=max
+
+  # ── Push images (main branch only) ─────────────────────────────────────────
+  docker-push:
+    name: Push images
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    strategy:
+      matrix:
+        service:
+          - ingestion-engine
+          - render-worker-typst
+          - render-worker-chromium
+          - crypto-signing
+          - api-gateway
+          - artifact-storage
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to:   type=gha,scope=${{ matrix.service }},mode=max

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{document_meta.title}}</title>
+  <style>
+    /* Print-optimised CSS — no JavaScript, no external resources */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 9pt;
+      color: #000;
+      line-height: 1.4;
+    }
+
+    /* Force page breaks at natural table boundaries */
+    @page { size: A4; margin: 20mm 15mm 25mm 20mm; }
+
+    .page-title {
+      text-align: center;
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 4mm;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: auto 1fr auto 1fr;
+      gap: 2mm 4mm;
+      margin-bottom: 6mm;
+      font-size: 9pt;
+    }
+    .meta-grid .label { font-weight: bold; white-space: nowrap; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+    th, td {
+      border: 0.5pt solid #555;
+      padding: 1.5mm 2mm;
+      vertical-align: top;
+    }
+    thead tr { background: #e8e8e8; }
+    /* Repeat header on every printed page */
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+    tbody tr:nth-child(odd)  { background: #fafafa; }
+    tbody tr:nth-child(even) { background: #fff; }
+
+    .num { text-align: right; }
+
+    .summary-table {
+      width: 22em;
+      margin-left: auto;
+      margin-top: 6mm;
+    }
+    .summary-table td { border: none; padding: 1mm 2mm; }
+    .summary-table .total-row td { font-weight: bold; border-top: 1pt solid #000; }
+
+    .signature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 5mm;
+      margin-top: 12mm;
+    }
+    .sig-box { text-align: center; }
+    .sig-box .line { border-top: 0.5pt solid #000; padding-top: 2mm; margin: 0 10%; }
+  </style>
+</head>
+<body>
+
+<div class="page-title">MEASUREMENT BOOK</div>
+<div style="text-align:center; font-size:11pt; margin-bottom:4mm;">{{document_meta.title}}</div>
+
+<div class="meta-grid">
+  <span class="label">Contract No:</span> <span>{{document_meta.contract_no}}</span>
+  <span class="label">Date:</span>         <span>{{document_meta.date}}</span>
+  <span class="label">Contractor:</span>   <span>{{document_meta.contractor}}</span>
+  <span class="label">Work:</span>         <span>{{document_meta.work_description}}</span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:2.5em">S.No</th>
+      <th>Description of Item</th>
+      <th style="width:4em">Unit</th>
+      <th style="width:6em" class="num">Quantity</th>
+      <th style="width:7em" class="num">Rate (₹)</th>
+      <th style="width:8em" class="num">Amount (₹)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each line_items}}
+    <tr>
+      <td>{{this.index}}</td>
+      <td>{{this.description}}</td>
+      <td>{{this.unit}}</td>
+      <td class="num">{{this.quantity}}</td>
+      <td class="num">{{this.rate}}</td>
+      <td class="num">{{this.amount}}</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+<table class="summary-table">
+  <tr>
+    <td>Sub-total</td>
+    <td class="num">₹ {{summary.subtotal}}</td>
+  </tr>
+  <tr>
+    <td>GST @ {{summary.tax_rate_pct}}%</td>
+    <td class="num">₹ {{summary.tax_amount}}</td>
+  </tr>
+  <tr class="total-row">
+    <td><strong>Grand Total</strong></td>
+    <td class="num"><strong>₹ {{summary.grand_total}}</strong></td>
+  </tr>
+  <tr><td colspan="2" style="padding:1mm 0"></td></tr>
+  <tr>
+    <td>Contract Value</td>
+    <td class="num">₹ {{summary.contract_value}}</td>
+  </tr>
+  <tr>
+    <td>Previous Cumulative</td>
+    <td class="num">₹ {{summary.previous_cumulative}}</td>
+  </tr>
+  <tr class="total-row">
+    <td><strong>Current Claim</strong></td>
+    <td class="num"><strong>₹ {{summary.current_claim}}</strong></td>
+  </tr>
+</table>
+
+<div class="signature-grid">
+  <div class="sig-box"><div class="line">Contractor</div></div>
+  <div class="sig-box"><div class="line">Junior Engineer</div></div>
+  <div class="sig-box"><div class="line">Executive Engineer</div></div>
+</div>
+
+</body>
+</html>

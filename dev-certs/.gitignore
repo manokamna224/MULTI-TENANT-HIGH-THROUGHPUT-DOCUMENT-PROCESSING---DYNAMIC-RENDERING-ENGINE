@@ -1,0 +1,5 @@
+# Never commit private keys or PKCS12 bundles
+*.key
+*.p12
+*.pem
+*.crt

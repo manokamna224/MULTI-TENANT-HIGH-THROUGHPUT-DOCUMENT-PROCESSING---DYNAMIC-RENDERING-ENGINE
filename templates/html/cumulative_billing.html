@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cumulative Billing — {{document_meta.title}}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Times New Roman', serif; font-size: 9pt; color: #000; line-height: 1.4; }
+    @page { size: A4; margin: 20mm 15mm 25mm 20mm; }
+
+    .title    { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 2mm; }
+    .subtitle { text-align: center; font-size: 10pt; margin-bottom: 4mm; }
+
+    .meta-grid {
+      display: grid; grid-template-columns: auto 1fr auto 1fr;
+      gap: 2mm 4mm; margin-bottom: 6mm;
+    }
+    .label { font-weight: bold; white-space: nowrap; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+    th, td { border: 0.5pt solid #555; padding: 1.5mm 2mm; vertical-align: top; }
+    thead tr { background: #e8e8e8; }
+    thead    { display: table-header-group; }
+    tr       { page-break-inside: avoid; }
+    tbody tr:nth-child(odd)  { background: #fafafa; }
+    tbody tr:nth-child(even) { background: #fff; }
+    .num { text-align: right; }
+
+    .summary-table { width: 24em; margin-left: auto; margin-top: 6mm; }
+    .summary-table td { border: none; padding: 1mm 2mm; }
+    .summary-table .sep td { border-top: 1pt solid #000; padding-top: 2mm; }
+    .summary-table .total td { font-weight: bold; }
+
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5mm; margin-top: 12mm; }
+    .sig-box { text-align: center; }
+    .sig-box .line { border-top: 0.5pt solid #000; padding-top: 2mm; margin: 0 10%; }
+  </style>
+</head>
+<body>
+
+<div class="title">CUMULATIVE BILLING STATEMENT</div>
+<div class="subtitle">{{document_meta.title}}</div>
+
+<div class="meta-grid">
+  <span class="label">Contract No:</span> <span>{{document_meta.contract_no}}</span>
+  <span class="label">Bill No:</span>     <span>{{document_meta.bill_no}}</span>
+  <span class="label">Date:</span>        <span>{{document_meta.date}}</span>
+  <span></span>                           <span></span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:2.5em">S.No</th>
+      <th>Description of Item</th>
+      <th style="width:4em">Unit</th>
+      <th style="width:6em" class="num">Quantity</th>
+      <th style="width:7em" class="num">Rate (₹)</th>
+      <th style="width:8em" class="num">Amount (₹)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each line_items}}
+    <tr>
+      <td>{{this.index}}</td>
+      <td>{{this.description}}</td>
+      <td>{{this.unit}}</td>
+      <td class="num">{{this.quantity}}</td>
+      <td class="num">{{this.rate}}</td>
+      <td class="num">{{this.amount}}</td>
+    </tr>
+    {{/each}}
+  </tbody>
+</table>
+
+<table class="summary-table">
+  <tr><td>Sub-total</td><td class="num">₹ {{summary.subtotal}}</td></tr>
+  <tr><td>GST @ {{summary.tax_rate_pct}}%</td><td class="num">₹ {{summary.tax_amount}}</td></tr>
+  <tr class="sep total"><td><strong>Grand Total (This Bill)</strong></td><td class="num"><strong>₹ {{summary.grand_total}}</strong></td></tr>
+  <tr><td colspan="2" style="padding:1mm 0"></td></tr>
+  <tr><td>Contract Value</td><td class="num">₹ {{summary.contract_value}}</td></tr>
+  <tr><td>Cumulative Up to Previous Bill</td><td class="num">₹ {{summary.previous_cumulative}}</td></tr>
+  <tr class="sep total"><td><strong>Current Cumulative Claim</strong></td><td class="num"><strong>₹ {{summary.current_claim}}</strong></td></tr>
+</table>
+
+<div class="sig-grid">
+  <div class="sig-box"><div class="line">Contractor</div></div>
+  <div class="sig-box"><div class="line">Junior Engineer</div></div>
+  <div class="sig-box"><div class="line">Executive Engineer</div></div>
+</div>
+
+</body>
+</html>
