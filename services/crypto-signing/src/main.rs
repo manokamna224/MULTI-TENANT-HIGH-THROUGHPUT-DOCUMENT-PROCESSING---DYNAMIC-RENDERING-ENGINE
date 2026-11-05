@@ -9,6 +9,7 @@ mod storage;
 use anyhow::Result;
 use tracing::info;
 use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::prelude::*;
 
 /// Entry point.
 ///

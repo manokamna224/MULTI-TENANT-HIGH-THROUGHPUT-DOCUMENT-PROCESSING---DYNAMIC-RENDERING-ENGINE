@@ -1,166 +1,134 @@
-/**
- * Unit tests for NotificationWorker stream consumer.
- *
- * Mocks:
- *   - ioredis Redis       — simulates XREADGROUP responses
- *   - WebhookDispatcher   — verifies dispatch() is called with correct payload
- *   - Presigner           — returns a fake URL
- *
- * Tests verify:
- *   - job.completed event is dispatched for completed results
- *   - job.failed event is dispatched for failed results
- *   - Non-completed render:results messages are skipped (signing handles them)
- *   - Malformed JSON in stream is ACKed and discarded (not retried)
- *   - Missing 'result' field is ACKed and discarded
- */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// ── Mocks ─────────────────────────────────────────────────────────────────────
-
-const mockXack       = vi.fn().mockResolvedValue(1);
-const mockXgroup     = vi.fn().mockResolvedValue('OK');
-const mockXreadgroup = vi.fn().mockResolvedValue(null); // null = no messages
-const mockConnect    = vi.fn().mockResolvedValue(undefined);
-const mockQuit       = vi.fn().mockResolvedValue(undefined);
-
+// All factories use inline vi.fn() — no outer variable refs (vitest hoisting rule)
 vi.mock('ioredis', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    connect:     mockConnect,
-    xgroup:      mockXgroup,
-    xreadgroup:  mockXreadgroup,
-    xack:        mockXack,
-    quit:        mockQuit,
-  })),
+  default: vi.fn(),
 }));
 
-const mockDispatch = vi.fn().mockResolvedValue(undefined);
-const mockClose    = vi.fn().mockResolvedValue(undefined);
-
 vi.mock('./webhook-dispatcher', () => ({
-  WebhookDispatcher: vi.fn().mockImplementation(() => ({
-    dispatch: mockDispatch,
-    close:    mockClose,
-  })),
+  WebhookDispatcher: vi.fn(),
 }));
 
 vi.mock('./presigner', () => ({
   Presigner: vi.fn().mockImplementation(() => ({
-    generateUrl: vi.fn().mockResolvedValue('https://s3.example.com/fake'),
+    generateUrl: vi.fn().mockResolvedValue('https://fake.url'),
   })),
 }));
 
-// ─────────────────────────────────────────────────────────────────────────────
-
+import Redis from 'ioredis';
+import { WebhookDispatcher } from './webhook-dispatcher';
 import { NotificationWorker } from './notification-worker';
-
-function makeCfg() {
-  return {
-    redisUrl:       'redis://localhost',
-    consumerGroup:  'test-group',
-    consumerName:   'test-worker',
-    databaseUrl:    'postgres://x',
-    artifactBucket: 'bucket',
-    awsRegion:      'us-east-1',
-    presignTtlSec:  3600,
-  } as any;
-}
 
 const log = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as any;
 
-function buildStreamEntry(result: object): [string, string[]] {
-  return ['stream-id-1', ['result', JSON.stringify(result)]];
+function makeCfg() {
+  return {
+    redisUrl: 'redis://localhost', consumerGroup: 'grp',
+    consumerName: 'c1', databaseUrl: 'pg://x',
+    artifactBucket: 'b', awsRegion: 'us-east-1', presignTtlSec: 3600,
+  } as any;
 }
 
+// ioredis xreadgroup response format:
+// [ [streamName, [ [msgId, [field, value, ...]], ... ] ] ]
+function makeMsg(stream: string, msgId: string, payload: object): any {
+  return [[stream, [[msgId, ['result', JSON.stringify(payload)]]]]];
+}
+
+// Create fresh mock instances before each test
+let mockRedis: any;
+let mockDispatcher: any;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+
+  mockRedis = {
+    connect:    vi.fn().mockResolvedValue(undefined),
+    xgroup:     vi.fn().mockResolvedValue('OK'),
+    xreadgroup: vi.fn().mockResolvedValue(null),
+    xack:       vi.fn().mockResolvedValue(1),
+    quit:       vi.fn().mockResolvedValue(undefined),
+  };
+  vi.mocked(Redis).mockImplementation(() => mockRedis as any);
+
+  mockDispatcher = {
+    dispatch: vi.fn().mockResolvedValue(undefined),
+    close:    vi.fn().mockResolvedValue(undefined),
+  };
+  vi.mocked(WebhookDispatcher).mockImplementation(() => mockDispatcher as any);
+});
+
 describe('NotificationWorker message handling', () => {
-  beforeEach(() => vi.clearAllMocks());
 
-  it('dispatches job.completed for a signed result', async () => {
-    const worker  = new NotificationWorker(makeCfg(), log);
+  it('dispatches job.completed for a completed result', async () => {
     const payload = {
-      job_id:        'job-1',
-      tenant_id:     'tenant-1',
-      document_type: 'measurement_book',
-      storage_path:  's3://bucket/key.pdf',
-      sha256:        'abc123',
-      signed_at:     '2026-11-04T12:00:00Z',
-      status:        'completed',
+      job_id: 'j1', tenant_id: 't1', document_type: 'mb',
+      storage_path: 's3://b/k.pdf', status: 'completed',
     };
+    mockRedis.xreadgroup
+      .mockResolvedValueOnce(makeMsg('signed:results', 'mid-1', payload))
+      .mockResolvedValue(null);
 
-    // Simulate one XREADGROUP response from signed:results, then stop
-    mockXreadgroup
-      .mockResolvedValueOnce([['signed:results', [buildStreamEntry(payload)]]])
-      .mockResolvedValueOnce(null);
+    const worker = new NotificationWorker(makeCfg(), log);
     worker.shutdown();
-
     await worker.run();
 
-    expect(mockDispatch).toHaveBeenCalledOnce();
-    const dispatchArg = mockDispatch.mock.calls[0][0];
-    expect(dispatchArg.event).toBe('job.completed');
-    expect(dispatchArg.job_id).toBe('job-1');
-    expect(mockXack).toHaveBeenCalledWith('signed:results', 'test-group', 'stream-id-1');
+    expect(mockDispatcher.dispatch).toHaveBeenCalledOnce();
+    expect(mockDispatcher.dispatch.mock.calls[0][0].event).toBe('job.completed');
+    expect(mockRedis.xack).toHaveBeenCalledWith('signed:results', 'grp', 'mid-1');
   });
 
   it('dispatches job.failed for a failed result', async () => {
+    const payload = { job_id: 'j2', tenant_id: 't', document_type: 'mb', status: 'failed' };
+    mockRedis.xreadgroup
+      .mockResolvedValueOnce(makeMsg('signed:results', 'mid-2', payload))
+      .mockResolvedValue(null);
+
     const worker = new NotificationWorker(makeCfg(), log);
-    const payload = {
-      job_id: 'job-2', tenant_id: 't', document_type: 'mt',
-      status: 'failed', error_log: 'render timeout',
-    };
-
-    mockXreadgroup
-      .mockResolvedValueOnce([['signed:results', [buildStreamEntry(payload)]]])
-      .mockResolvedValueOnce(null);
     worker.shutdown();
-
     await worker.run();
 
-    const dispatchArg = mockDispatch.mock.calls[0]?.[0];
-    expect(dispatchArg?.event).toBe('job.failed');
+    expect(mockDispatcher.dispatch.mock.calls[0]?.[0]?.event).toBe('job.failed');
   });
 
   it('skips non-completed messages on render:results', async () => {
+    const payload = { job_id: 'j3', tenant_id: 't', document_type: 'mb', status: 'processing' };
+    mockRedis.xreadgroup
+      .mockResolvedValueOnce(makeMsg('render:results', 'mid-3', payload))
+      .mockResolvedValue(null);
+
     const worker = new NotificationWorker(makeCfg(), log);
-    const payload = { job_id: 'job-3', tenant_id: 't', document_type: 'mt', status: 'failed' };
-
-    mockXreadgroup
-      .mockResolvedValueOnce([['render:results', [buildStreamEntry(payload)]]])
-      .mockResolvedValueOnce(null);
     worker.shutdown();
-
     await worker.run();
 
-    // ACKed but not dispatched — signing worker handles failures from render:results
-    expect(mockDispatch).not.toHaveBeenCalled();
-    expect(mockXack).toHaveBeenCalledWith('render:results', 'test-group', 'stream-id-1');
+    expect(mockDispatcher.dispatch).not.toHaveBeenCalled();
+    expect(mockRedis.xack).toHaveBeenCalledWith('render:results', 'grp', 'mid-3');
   });
 
-  it('ACKs and discards a message with missing result field', async () => {
+  it('ACKs and discards message with missing result field', async () => {
+    mockRedis.xreadgroup
+      .mockResolvedValueOnce([['signed:results', [['mid-4', ['other_field', 'val']]]]])
+      .mockResolvedValue(null);
+
     const worker = new NotificationWorker(makeCfg(), log);
-
-    mockXreadgroup
-      .mockResolvedValueOnce([['signed:results', [['mid-1', ['other_field', 'value']]]]])
-      .mockResolvedValueOnce(null);
     worker.shutdown();
-
     await worker.run();
 
-    expect(mockDispatch).not.toHaveBeenCalled();
-    expect(mockXack).toHaveBeenCalledWith('signed:results', 'test-group', 'mid-1');
+    expect(mockDispatcher.dispatch).not.toHaveBeenCalled();
+    expect(mockRedis.xack).toHaveBeenCalledWith('signed:results', 'grp', 'mid-4');
   });
 
-  it('ACKs and discards a message with malformed JSON', async () => {
+  it('ACKs and discards message with malformed JSON', async () => {
+    mockRedis.xreadgroup
+      .mockResolvedValueOnce([['signed:results', [['mid-5', ['result', '{bad']]]]])
+      .mockResolvedValue(null);
+
     const worker = new NotificationWorker(makeCfg(), log);
-
-    mockXreadgroup
-      .mockResolvedValueOnce([['signed:results', [['mid-2', ['result', '{not json']]]]])
-      .mockResolvedValueOnce(null);
     worker.shutdown();
-
     await worker.run();
 
-    expect(mockDispatch).not.toHaveBeenCalled();
-    expect(mockXack).toHaveBeenCalledWith('signed:results', 'test-group', 'mid-2');
+    expect(mockDispatcher.dispatch).not.toHaveBeenCalled();
+    expect(mockRedis.xack).toHaveBeenCalledWith('signed:results', 'grp', 'mid-5');
     expect(log.error).toHaveBeenCalled();
   });
 });

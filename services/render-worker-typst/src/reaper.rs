@@ -1,10 +1,6 @@
-/// Dead-letter reaper task.
-///
-/// Runs every REAP_INTERVAL seconds. Calls XAUTOCLAIM to reclaim messages
-/// idle in the PEL longer than CLAIM_IDLE_MS, retries up to MAX_RETRIES,
-/// then routes to render:dlq and ACKs the original.
+/// Dead-letter reaper — reclaims idle PEL messages via XAUTOCLAIM.
 use anyhow::{Context, Result};
-use redis::{aio::MultiplexedConnection, AsyncCommands};
+use redis::{aio::MultiplexedConnection, AsyncCommands, Value};
 use std::time::Duration;
 use tokio::time;
 use tracing::{error, info, warn};
@@ -29,23 +25,13 @@ pub async fn run_reaper(
     }
 }
 
-async fn reap_once(
-    conn: &mut MultiplexedConnection,
-    group: &str,
-    consumer: &str,
-) -> Result<()> {
+async fn reap_once(conn: &mut MultiplexedConnection, group: &str, consumer: &str) -> Result<()> {
     let mut cursor = "0-0".to_string();
     loop {
-        let reply: redis::Value = redis::cmd("XAUTOCLAIM")
-            .arg(STREAM_KEY)
-            .arg(group)
-            .arg(consumer)
-            .arg(CLAIM_IDLE_MS)
-            .arg(&cursor)
-            .arg("COUNT").arg(10)
-            .query_async(conn)
-            .await
-            .context("XAUTOCLAIM")?;
+        let reply: Value = redis::cmd("XAUTOCLAIM")
+            .arg(STREAM_KEY).arg(group).arg(consumer)
+            .arg(CLAIM_IDLE_MS).arg(&cursor).arg("COUNT").arg(10)
+            .query_async(conn).await.context("XAUTOCLAIM")?;
 
         let (next_cursor, entries) = parse_autoclaim_reply(reply)?;
         for (msg_id, fields) in entries {
@@ -63,95 +49,72 @@ async fn handle_claimed(
     msg_id: &str,
     fields: &[(String, String)],
 ) -> Result<()> {
-    // XPENDING <stream> <group> - + 1 <consumer>
-    let pending: Vec<redis::Value> = redis::cmd("XPENDING")
-        .arg(STREAM_KEY)
-        .arg(group)
-        .arg("-").arg("+").arg(1)
-        .arg(msg_id)
-        .query_async(conn)
-        .await
-        .context("XPENDING detail")?;
+    let pending: Vec<Value> = redis::cmd("XPENDING")
+        .arg(STREAM_KEY).arg(group).arg("-").arg("+").arg(1).arg(msg_id)
+        .query_async(conn).await.context("XPENDING detail")?;
 
     let delivery_count = extract_delivery_count(&pending).unwrap_or(MAX_RETRIES + 1);
 
     if delivery_count > MAX_RETRIES {
         let mut cmd = redis::cmd("XADD");
-        cmd.arg(DLQ_STREAM)
-           .arg("*")
+        cmd.arg(DLQ_STREAM).arg("*")
            .arg("original_id").arg(msg_id)
            .arg("delivery_count").arg(delivery_count);
         for (k, v) in fields { cmd.arg(k).arg(v); }
         let _: String = cmd.query_async(conn).await.context("XADD to DLQ")?;
-
-        let _: () = conn
-            .xack(STREAM_KEY, group, &[msg_id])
-            .await
-            .context("XACK after DLQ routing")?;
-
-        warn!(msg_id, delivery_count, "message routed to dead-letter queue");
+        let _: () = conn.xack(STREAM_KEY, group, &[msg_id]).await.context("XACK")?;
+        warn!(msg_id, delivery_count, "message routed to DLQ");
     } else {
         info!(msg_id, delivery_count, "reclaimed for retry");
     }
     Ok(())
 }
 
-/// Parse the XAUTOCLAIM reply — format changed in redis-rs 0.27.
-/// Returns (next-cursor, Vec<(msg_id, Vec<(key, value)>)>).
-fn parse_autoclaim_reply(v: redis::Value) -> Result<(String, Vec<(String, Vec<(String, String)>)>)> {
-    use redis::Value::*;
+fn val_to_string(v: &Value) -> Option<String> {
+    match v {
+        Value::BulkString(d) => Some(String::from_utf8_lossy(d).to_string()),
+        Value::SimpleString(s) => Some(s.clone()),
+        _ => None,
+    }
+}
+
+fn parse_autoclaim_reply(v: Value) -> Result<(String, Vec<(String, Vec<(String, String)>)>)> {
     let parts = match v {
-        Array(p) | Bulk(p) => p,
+        Value::Array(p) => p,
         _ => return Ok(("0-0".to_string(), vec![])),
     };
 
-    let next_cursor = match parts.first() {
-        Some(BulkString(d)) | Some(SimpleString(d)) => {
-            String::from_utf8_lossy(d).to_string()
-        }
-        _ => "0-0".to_string(),
-    };
+    let next_cursor = parts.first()
+        .and_then(|x| val_to_string(x))
+        .unwrap_or_else(|| "0-0".to_string());
 
     let mut entries = Vec::new();
-    let msgs_val = parts.get(1);
-    let msgs = match msgs_val {
-        Some(Array(m)) | Some(Bulk(m)) => m,
-        _ => return Ok((next_cursor, entries)),
-    };
-
-    for msg in msgs {
-        let inner = match msg {
-            Array(i) | Bulk(i) => i,
-            _ => continue,
-        };
-        let id = match inner.first() {
-            Some(BulkString(d)) | Some(SimpleString(d)) => String::from_utf8_lossy(d).to_string(),
-            _ => continue,
-        };
-        let mut fields = Vec::new();
-        if let Some(Array(fvs)) | Some(Bulk(fvs)) = inner.get(1) {
-            let mut it = fvs.iter();
-            while let (Some(k), Some(v)) = (it.next(), it.next()) {
-                let ks = match k {
-                    BulkString(d) | SimpleString(d) => String::from_utf8_lossy(d).to_string(),
-                    _ => continue,
+    if let Some(Value::Array(msgs)) = parts.get(1) {
+        for msg in msgs {
+            if let Value::Array(inner) = msg {
+                let id = match inner.first().and_then(|x| val_to_string(x)) {
+                    Some(s) => s,
+                    None => continue,
                 };
-                let vs = match v {
-                    BulkString(d) | SimpleString(d) => String::from_utf8_lossy(d).to_string(),
-                    _ => String::new(),
-                };
-                fields.push((ks, vs));
+                let mut fields = Vec::new();
+                if let Some(Value::Array(fvs)) = inner.get(1) {
+                    let mut it = fvs.iter();
+                    while let (Some(k), Some(v)) = (it.next(), it.next()) {
+                        if let (Some(ks), Some(vs)) = (val_to_string(k), val_to_string(v)) {
+                            fields.push((ks, vs));
+                        }
+                    }
+                }
+                entries.push((id, fields));
             }
         }
-        entries.push((id, fields));
     }
     Ok((next_cursor, entries))
 }
 
-fn extract_delivery_count(pending: &[redis::Value]) -> Option<i64> {
-    use redis::Value::*;
-    if let Some(Array(entry)) | Some(Bulk(entry)) = pending.first() {
-        if let Some(Int(count)) = entry.get(3) {
+fn extract_delivery_count(pending: &[Value]) -> Option<i64> {
+    if let Some(Value::Array(entry)) = pending.first() {
+        if let Some(Value::Int(count)) = entry.get(3) {
             return Some(*count);
         }
     }

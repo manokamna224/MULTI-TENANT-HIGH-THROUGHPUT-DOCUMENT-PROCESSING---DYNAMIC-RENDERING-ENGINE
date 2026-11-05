@@ -135,9 +135,8 @@ async fn run_worker(
                     .map
                     .get("payload")
                     .and_then(|v| match v {
-                        redis::Value::BulkString(d) | redis::Value::SimpleString(d) => {
-                            Some(String::from_utf8_lossy(d).to_string())
-                        }
+                        redis::Value::BulkString(d) => Some(String::from_utf8_lossy(d).to_string()),
+                        redis::Value::SimpleString(s) => Some(s.clone()),
                         _ => None,
                     })
                     .unwrap_or_default();

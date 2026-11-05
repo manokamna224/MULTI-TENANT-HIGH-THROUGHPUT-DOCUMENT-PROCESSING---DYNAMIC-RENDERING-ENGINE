@@ -8,7 +8,7 @@
  *   - Errors from pg are swallowed (non-fatal, just logged)
  *   - When DATABASE_URL is absent, methods are no-ops
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ── Mock pg ───────────────────────────────────────────────────────────────────
 const mockQuery = vi.fn().mockResolvedValue({ rowCount: 1 });

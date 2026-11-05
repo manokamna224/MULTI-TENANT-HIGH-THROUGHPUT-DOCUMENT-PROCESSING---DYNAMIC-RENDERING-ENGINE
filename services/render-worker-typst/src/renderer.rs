@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use tokio::process::Command;
 use tokio::time::timeout;
-use tracing::{debug, warn};
+use tracing::debug;
 
 const RENDER_TIMEOUT: Duration = Duration::from_secs(30);
 

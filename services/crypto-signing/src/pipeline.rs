@@ -12,7 +12,7 @@
 use anyhow::{Context, Result};
 use redis::{aio::MultiplexedConnection, AsyncCommands, Client};
 use serde::Deserialize;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::{
     config::{Config, KeySource},
@@ -129,7 +129,8 @@ impl SigningWorker {
             .map
             .get("result")
             .and_then(|v| match v {
-                redis::Value::Data(d) => Some(String::from_utf8_lossy(d).to_string()),
+                redis::Value::BulkString(d) => Some(String::from_utf8_lossy(d).to_string()),
+                redis::Value::SimpleString(s) => Some(s.clone()),
                 _ => None,
             })
             .context("missing 'result' field in stream message")?;

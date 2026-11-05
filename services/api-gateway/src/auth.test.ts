@@ -20,9 +20,9 @@ function makeRequest(headers: Record<string, string> = {}): any {
 }
 
 function makeReply(): any {
-  const reply = { _code: 200, _body: null as any };
-  reply.code  = (n: number) => { reply._code = n; return reply; };
-  reply.send  = (b: any)    => { reply._body = b; return reply; };
+  const reply: any = { _code: 200, _body: null };
+  reply.code  = function(n: number) { reply._code = n; return reply; };
+  reply.send  = function(b: any)    { reply._body = b; return reply; };
   return reply;
 }
 
