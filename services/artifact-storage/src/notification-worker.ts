@@ -31,10 +31,10 @@ export class NotificationWorker {
   private dispatcher: WebhookDispatcher;
   private running = true;
 
-  constructor(private cfg: Config, private log: Logger) {
-    this.redis      = new Redis(cfg.redisUrl, { lazyConnect: true });
+  constructor(private cfg: Config, private log: Logger, dispatcher?: WebhookDispatcher, redisClient?: Redis) {
+    this.redis      = redisClient ?? new Redis(cfg.redisUrl, { lazyConnect: true });
     this.presigner  = new Presigner(cfg);
-    this.dispatcher = new WebhookDispatcher(cfg.databaseUrl, this.presigner, log);
+    this.dispatcher = dispatcher ?? new WebhookDispatcher(cfg.databaseUrl, this.presigner, log);
   }
 
   async run(): Promise<void> {
